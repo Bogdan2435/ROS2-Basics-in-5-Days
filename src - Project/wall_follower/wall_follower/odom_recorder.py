@@ -21,22 +21,12 @@ class MyActionServer(Node):
     def __init__(self):
         super().__init__('quiz_action_server')
         self.action_callback_group = ReentrantCallbackGroup()
-        self._action_server = ActionServer(
-            self, OdomRecord, 'record_odom', self.execute_callback, callback_group=self.action_callback_group)
+        self._action_server = ActionServer(self, OdomRecord, 'record_odom', self.execute_callback, callback_group=self.action_callback_group)
         self.last_odom = Point32()
-        
 
         self.publisher_ = self.create_publisher(Float32, 'total_distance', 10)
         self.odom_callback_group = self.action_callback_group
-        self.odom_subscriber = self.create_subscription(
-            Odometry,
-            '/odom',
-            self.odom_callback,
-            QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT),
-            callback_group=self.odom_callback_group)  # is the most used to read LaserScan data and some sensor data.
-
-    def dist_diff(self, a, b):
-        return math.sqrt((a[0]-b[0])**2+(a[1]-b[1])**2)
+        self.odom_subscriber = self.create_subscription(Odometry, '/odom', self.odom_callback, QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT), callback_group=self.odom_callback_group)  
 
     def odom_callback(self, msg):
         self.last_odom.x = msg.pose.pose.position.x
@@ -75,7 +65,9 @@ class MyActionServer(Node):
 
             distance_first_last = math.sqrt((self.last_odom.x - self.first_odom.x) ** 2 + (self.last_odom.y - self.first_odom.y) ** 2)
 
-            if distance_first_last <= 0.10 and steps > 10:
+            self.get_logger().info('Distance from start "%s"' % str(distance_first_last))
+
+            if distance_first_last <= 0.20 and steps > 30:
                 back = True
 
             steps += 1
@@ -92,16 +84,10 @@ class MyActionServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
     my_action_server = MyActionServer()
-
     executor = MultiThreadedExecutor(num_threads=2)
-
     rclpy.spin(my_action_server, executor=executor)
-
-    # executor.add_node(my_action_server)
     my_action_server.destroy_node()
-    # executor.spin()
     rclpy.shutdown()
 
 

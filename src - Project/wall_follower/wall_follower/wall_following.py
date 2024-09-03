@@ -53,12 +53,12 @@ class Wall_Follower(Node):
     def laser_callback(self,msg):
         ###########################################
         # Simulation clockwise
-        self.laser_right = msg.ranges[540] 
-        self.laser_forward = msg.ranges[0]
+        # self.laser_right = msg.ranges[540] 
+        # self.laser_forward = msg.ranges[0]
 
         # #real robot
-        # self.laser_right = msg.ranges[180] 
-        # self.laser_forward = msg.ranges[360]
+        self.laser_right = msg.ranges[180] 
+        self.laser_forward = msg.ranges[360]
 
     def send_goal(self):
         goal_msg = OdomRecord.Goal()
@@ -103,6 +103,10 @@ class Wall_Follower(Node):
                 self.get_logger().info('Find wall finished')
                 self.find_wall_completed = True
                 self.wall_follower_can_start = True
+                self.cmd.angular.z = 0.0
+                self.cmd.linear.x = 0.0
+                self.publisher_.publish(self.cmd)
+
         elif self.wall_follower_can_start:
             if not self.action_called:
                 self.get_logger().info('Action odom started')
@@ -126,18 +130,20 @@ class Wall_Follower(Node):
                     self.cmd.linear.x = 0.04
 
                 self.publisher_.publish(self.cmd)
+            else:
+                self.cmd.linear.x = 0.0
+                self.cmd.angular.z = 0.0
+                self.publisher_.publish(self.cmd)
+
 
 def main(args=None):
     rclpy.init(args=args)
     wall_follower_node = Wall_Follower()
     executor = MultiThreadedExecutor(num_threads=5)
-    # Add the node to the executor
     executor.add_node(wall_follower_node)
     try:
-        # Spin the executor
         executor.spin()
     finally:
-        # Shutdown the executor
         executor.shutdown()
         wall_follower_node.destroy_node()
     rclpy.shutdown()
